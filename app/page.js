@@ -1,17 +1,73 @@
 'use client';
 
-// Phase 2 UI: the four-input form gates the chat (INP-1…5), the profile rides along
-// with every request, and the conversation lives here and only here.
+// The four-input form gates the chat (INP-1…5), the profile rides along with every
+// request, and the conversation lives here and only here.
 //
 // INP-3 / NFR-2: profile and conversation are React state in this component. They are
 // never written to localStorage, a cookie, or any server-side store — a refresh loses
 // them, which is the intended behaviour. Nothing about the user is persisted.
 
 import { useEffect, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowRight,
+  BookOpen,
+  Check,
+  Compass,
+  Flag,
+  GraduationCap,
+  Info,
+  RotateCcw,
+  Send,
+  ShieldAlert,
+  Sparkles,
+  User,
+  Users,
+  Wallet,
+} from 'lucide-react';
 
 import { PROFILE_FIELDS, EMPTY_PROFILE, validateProfile } from '@/lib/profile.js';
 
 const DISCLAIMER = 'Not official guidance. Verify on the scheme’s official page.';
+
+// Presentation only — icon and colour per question. Keyed by the field keys defined
+// in lib/profile.js, which stays the single source of truth for the options.
+//
+// Literal hex, deliberately, not `var(--royal)`: these are written to inline custom
+// properties on the fieldset and read by a `:has()` rule on a descendant. A nested
+// var() passed that way fails to substitute — the declarations reading it are dropped
+// silently, which showed up as invisible white-on-white selected pills.
+//
+// `onPill` is not decoration: white on orange/amber is ~2.9:1 and fails WCAG AA, so
+// those two selected states use dark ink instead. Blue and red are dark enough for white.
+const FIELD_STYLE = {
+  course_level: { icon: BookOpen, color: '#2563eb', onPill: '#ffffff' },
+  category: { icon: Users, color: '#e11d48', onPill: '#ffffff' },
+  income_band: { icon: Wallet, color: '#fbbf24', onPill: '#16182f' },
+  stage: { icon: Flag, color: '#f97316', onPill: '#16182f' },
+};
+
+const SUGGESTIONS = [
+  'What schemes are available for me?',
+  'What are the income limits?',
+  'Which documents do I need to apply?',
+];
+
+function Masthead() {
+  return (
+    <>
+      <div className="masthead">
+        <span className="crest" aria-hidden="true">
+          <GraduationCap size={21} strokeWidth={2} />
+        </span>
+        <h1>
+          Scholarship <span className="accent">Assistant</span>
+        </h1>
+      </div>
+      <p className="tagline">Straight answers, from the official guidelines.</p>
+    </>
+  );
+}
 
 function ProfileForm({ onStart }) {
   const [profile, setProfile] = useState(EMPTY_PROFILE);
@@ -34,21 +90,28 @@ function ProfileForm({ onStart }) {
   }
 
   return (
-    <form onSubmit={submit}>
-      <p className="notice">
-        <strong>Before you start.</strong> {DISCLAIMER} Answers come from official scheme
-        guideline documents, but this tool is not a substitute for them. Your four answers
-        below stay in this browser tab and are never stored.
-      </p>
-
-      {PROFILE_FIELDS.map((field) => {
+    <form onSubmit={submit} noValidate>
+      {PROFILE_FIELDS.map((field, index) => {
         const isMissing = missing.includes(field.key);
+        const style = FIELD_STYLE[field.key] ?? {};
+        const Icon = style.icon ?? BookOpen;
         return (
-          <fieldset key={field.key} className={isMissing ? 'invalid' : undefined}>
-            <legend>{field.legend}</legend>
+          <fieldset
+            key={field.key}
+            className={`question${isMissing ? ' invalid' : ''}`}
+            style={{ '--q-color': style.color, '--on-pill': style.onPill }}
+          >
+            <legend>
+              <Icon size={19} strokeWidth={2.25} aria-hidden="true" />
+              {field.legend}
+              <span className="step">{index + 1} of {PROFILE_FIELDS.length}</span>
+            </legend>
             <div className="options">
               {field.options.map((option) => (
-                <label className="option" key={option}>
+                <label
+                  className={`option${profile[field.key] === option ? ' is-selected' : ''}`}
+                  key={option}
+                >
                   <input
                     type="radio"
                     name={field.key}
@@ -56,21 +119,46 @@ function ProfileForm({ onStart }) {
                     checked={profile[field.key] === option}
                     onChange={() => choose(field.key, option)}
                   />
+                  <Check className="tick" size={15} strokeWidth={3} aria-hidden="true" />
                   {field.labels?.[option] ?? option}
                 </label>
               ))}
             </div>
-            {isMissing && <p className="field-error">Pick one to continue.</p>}
+            {/* Error sits beside the field it belongs to, not in a summary at the top. */}
+            {isMissing && (
+              <p className="field-error" role="alert">
+                <AlertCircle size={15} strokeWidth={2.5} aria-hidden="true" />
+                Pick one to continue.
+              </p>
+            )}
           </fieldset>
         );
       })}
 
-      <button type="submit">Start chat</button>
-      {attempted && missing.length > 0 && (
-        <p className="field-error">
-          All four are required — {missing.length} still unanswered.
-        </p>
-      )}
+      <div className="start-row">
+        <button type="submit">
+          Start chatting
+          <ArrowRight size={18} strokeWidth={2.5} aria-hidden="true" />
+        </button>
+        {attempted && missing.length > 0 ? (
+          <span className="field-error" role="status" style={{ margin: 0 }}>
+            {missing.length} still unanswered
+          </span>
+        ) : (
+          <span className="hand">all four, then you’re in</span>
+        )}
+      </div>
+
+      {/* REL-5: first-run notice. Sits below the form so it does not delay the task,
+          but is still on screen the first time anyone lands here. */}
+      <div className="notice">
+        <Info size={16} strokeWidth={2.25} aria-hidden="true" />
+        <div>
+          <strong>Before you start.</strong> {DISCLAIMER} Answers are drawn from official
+          scheme guideline documents, but this is not a substitute for them. Your four
+          answers stay in this browser tab and are never stored.
+        </div>
+      </div>
     </form>
   );
 }
@@ -88,6 +176,7 @@ function Chat({ profile, onStartOver }) {
   // and what gets put back in the composer if the request fails (REL-2).
   const [pending, setPending] = useState('');
   const endRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Keep the newest text in view as it streams, on a phone as much as on desktop.
   useEffect(() => {
@@ -175,49 +264,102 @@ function Chat({ profile, onStartOver }) {
     send(text);
   }
 
-  const summary = `${profile.course_level} · ${profile.category} · ${profile.income_band} · ${profile.stage}`;
+  // Suggestions fill the composer rather than sending — a stray tap should never
+  // spend a request against the free-tier quota.
+  function applySuggestion(text) {
+    setInput(text);
+    inputRef.current?.focus();
+  }
+
+  const chips = [profile.course_level, profile.category, profile.income_band, profile.stage];
 
   return (
     <>
       <div className="chat-header">
         {/* INP-5: the profile is shown but not editable. "Start over" is the only path. */}
-        <span className="profile-summary">{summary}</span>
+        <div className="chips" aria-label="Your profile">
+          {chips.map((label) => (
+            <span className="chip" key={label}>
+              {label}
+            </span>
+          ))}
+        </div>
+        <span className="spacer" />
         <button type="button" className="secondary" onClick={onStartOver}>
+          <RotateCcw size={15} strokeWidth={2.5} aria-hidden="true" />
           Start over
         </button>
       </div>
 
       <div className="messages">
         {messages.length === 0 && !busy && (
-          <p className="empty">
-            Ask anything about these scholarship schemes — eligibility, amounts, renewal
-            rules, documents required.
-          </p>
+          <div className="empty">
+            <span className="halo" aria-hidden="true">
+              <Compass size={30} strokeWidth={2} />
+            </span>
+            <h2>Ask away</h2>
+            <p>Eligibility, amounts, renewal rules, documents — anything in the guidelines.</p>
+            <div className="suggestions">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  type="button"
+                  className="suggestion"
+                  key={s}
+                  onClick={() => applySuggestion(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
+
         {messages.map((m, i) => (
           <div className={`msg ${m.role}`} key={i}>
-            <span className="who">{m.role === 'user' ? 'You' : 'Assistant'}</span>
+            <span className="who">
+              {m.role === 'user' ? (
+                <>
+                  <User size={12} strokeWidth={2.5} aria-hidden="true" /> You
+                </>
+              ) : (
+                <>
+                  <Sparkles size={12} strokeWidth={2.5} aria-hidden="true" /> Assistant
+                </>
+              )}
+            </span>
             {m.content}
           </div>
         ))}
 
         {/* REL-3: the in-flight turn. Shows the user's message immediately, then the
-            answer as it streams — a spinner only until the first token lands. */}
+            answer as it streams — dots only until the first token lands. */}
         {busy && (
           <>
             <div className="msg user">
-              <span className="who">You</span>
+              <span className="who">
+                <User size={12} strokeWidth={2.5} aria-hidden="true" /> You
+              </span>
               {pending}
             </div>
             <div className="msg assistant">
-              <span className="who">Assistant</span>
-              {streaming || <span className="dots" aria-label="Thinking" role="status" />}
+              <span className="who">
+                <Sparkles size={12} strokeWidth={2.5} aria-hidden="true" /> Assistant
+              </span>
+              {streaming || (
+                <span className="dots" role="status" aria-label="Thinking">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              )}
             </div>
           </>
         )}
+
         {error && (
-          <div className="error">
-            <span>{error}</span>
+          <div className="error" role="alert">
+            <AlertCircle size={20} strokeWidth={2.25} aria-hidden="true" />
+            <span className="msg-text">{error}</span>
             <button
               type="button"
               onClick={() => {
@@ -226,6 +368,7 @@ function Chat({ profile, onStartOver }) {
               }}
               disabled={busy || !pending}
             >
+              <RotateCcw size={15} strokeWidth={2.5} aria-hidden="true" />
               Retry
             </button>
           </div>
@@ -234,17 +377,22 @@ function Chat({ profile, onStartOver }) {
       </div>
 
       <form className="composer" onSubmit={submit}>
+        <label htmlFor="composer-input" className="sr-only" style={{ display: 'none' }}>
+          Your question
+        </label>
         <textarea
+          id="composer-input"
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question…"
+          placeholder="Ask about eligibility, amounts, documents…"
           rows={1}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) submit(e);
           }}
         />
-        <button type="submit" disabled={busy || !input.trim()}>
-          Send
+        <button type="submit" className="send" disabled={busy || !input.trim()} aria-label="Send message">
+          <Send size={19} strokeWidth={2.5} aria-hidden="true" />
         </button>
       </form>
     </>
@@ -258,11 +406,7 @@ export default function Home() {
   // conversation with it — back to an empty form.
   return (
     <main className="shell">
-      <h1>Scholarship Assistant</h1>
-      <p className="tagline">
-        Questions about Indian government scholarship schemes, answered from their
-        official guideline documents.
-      </p>
+      <Masthead />
 
       {profile ? (
         <Chat profile={profile} onStartOver={() => setProfile(null)} />
@@ -271,7 +415,10 @@ export default function Home() {
       )}
 
       {/* REL-5: persistent, visible on both screens. */}
-      <p className="disclaimer">{DISCLAIMER}</p>
+      <p className="disclaimer">
+        <ShieldAlert size={14} strokeWidth={2.25} aria-hidden="true" />
+        {DISCLAIMER}
+      </p>
     </main>
   );
 }

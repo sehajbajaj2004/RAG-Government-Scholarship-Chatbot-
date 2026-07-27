@@ -1,289 +1,648 @@
+/* Scholarship Assistant
+ *
+ * Palette is unchanged — orange / yellow / red / white / royal + light blue — but
+ * colour is now spent only where it carries meaning: the selected pill, the primary
+ * action, the per-question accent rule, the brand mark. Large surfaces are neutral.
+ *
+ * The contrast rule still governs every pairing:
+ *   - Blue and red are dark enough to carry WHITE text (>=4.5:1).
+ *   - Orange and yellow are NOT (white on #F97316 is ~2.9:1), so where they fill a
+ *     surface the text on top is dark ink.
+ */
+
 :root {
-  --bg: #ffffff;
-  --fg: #1a1a1a;
-  --muted: #666666;
-  --border: #d8d8d8;
-  --accent: #1a4d8f;
-  --accent-fg: #ffffff;
-  --user-bubble: #eef3fa;
-  --error-bg: #fdf0ef;
-  --error-fg: #97231b;
-  --notice-bg: #fbf7e8;
+  /* Accents */
+  --royal: #2563eb;
+  --royal-deep: #1d4ed8;
+  --royal-soft: #eff4ff;
+  --orange: #f97316;
+  --amber: #fbbf24;
+  --amber-soft: #fdf6e3;
+  --red: #e11d48;
+
+  /* Surfaces & ink */
+  --paper: #ffffff;
+  --canvas: #fafaf9;
+  --ink: #1a1c2b;
+  --ink-soft: #5b5f72;
+  /* The lightest grey still allowed on --canvas: measures 5.2:1, so small labels
+     (step counter, disclaimer, handwritten aside) stay above the 4.5:1 floor.
+     Anything lighter looked calmer and failed AA. */
+  --ink-muted: #666a7a;
+  --line: #e7e5e1;
+  --line-soft: #f0eeea;
+
+  /* Semantic */
+  --danger: #b91c1c;
+  --danger-bg: #fef4f4;
+  --danger-line: #f3cfcf;
+
+  /* Spacing rhythm — 4/8 scale */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+
+  --radius: 12px;
+  --radius-lg: 18px;
+  --shadow: 0 1px 2px rgba(26, 28, 43, 0.05);
+  --shadow-soft: 0 4px 16px -8px rgba(26, 28, 43, 0.18);
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  line-height: 1.55;
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────── */
+
 .shell {
-  max-width: 46rem;
+  max-width: 44rem;
   margin: 0 auto;
-  padding: 1.5rem 1rem 0;
-  min-height: 100vh;
+  padding: var(--s6) var(--s4) 0;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
 
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s1);
+}
+
+.crest {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--royal);
+  color: #fff;
+}
+
+/* Serif is reserved for the wordmark — the one place it adds character without
+   competing with the interface. */
 h1 {
-  font-size: 1.4rem;
-  margin: 0 0 0.25rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.4rem, 4vw, 1.75rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+h1 .accent {
+  color: var(--red);
 }
 
 .tagline {
-  color: var(--muted);
-  margin: 0 0 1.5rem;
-  font-size: 0.9rem;
+  font-family: var(--font-hand), cursive;
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  margin: 0 0 var(--s6);
+  padding-left: 50px;
 }
 
-fieldset {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin: 0 0 1rem;
-  padding: 0.75rem 1rem 1rem;
+/* ── Form ──────────────────────────────────────────────────────────── */
+
+.question {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--q-color, var(--royal));
+  border-radius: var(--radius);
+  padding: var(--s4);
+  margin: 0 0 var(--s3);
+  transition: border-color 200ms ease;
 }
 
-legend {
+/* Sans, not serif: these are interface labels, and at this size a serif reads as
+   decoration rather than structure. */
+.question legend {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-body), system-ui, sans-serif;
   font-weight: 600;
   font-size: 0.9rem;
-  padding: 0 0.35rem;
+  letter-spacing: 0.01em;
+  padding: 0;
+  margin-bottom: var(--s3);
+  width: 100%;
+}
+
+.question legend svg {
+  color: var(--q-color, var(--royal));
+  opacity: 0.85;
+}
+
+.step {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }
 
 .options {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--s2);
 }
 
 .option {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  border: 1px solid var(--border);
+  gap: var(--s2);
+  min-height: 44px;
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.35rem 0.8rem;
+  background: var(--paper);
+  font-size: 0.92rem;
+  font-weight: 450;
   cursor: pointer;
-  font-size: 0.9rem;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
-.option:has(input:checked) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-fg);
+.option:hover:not(.is-selected) {
+  border-color: #cfcdc8;
+  background: var(--line-soft);
 }
 
+/* The radio stays in the DOM for semantics and keyboard control, but the visual
+   state is carried by the pill. Not display:none — that would drop it from the
+   accessibility tree and break keyboard navigation. */
 .option input {
-  margin: 0;
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
 }
 
-fieldset.invalid {
-  border-color: var(--error-fg);
+/* Selected state is driven by a class React sets, not by `:has(input:checked)`.
+   React knows the selected value already, so deriving it again in CSS bought
+   nothing and added a browser-support dependency. */
+.option.is-selected {
+  background: var(--q-color, var(--royal));
+  border-color: var(--q-color, var(--royal));
+  color: var(--on-pill, #fff);
+  font-weight: 550;
+}
+
+.option:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.option .tick {
+  display: none;
+}
+
+.option.is-selected .tick {
+  display: block;
+}
+
+.question.invalid {
+  border-color: var(--danger-line);
+  border-left-color: var(--danger);
 }
 
 .field-error {
-  color: var(--error-fg);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--danger);
   font-size: 0.82rem;
-  margin: 0.5rem 0 0;
+  font-weight: 500;
+  margin: var(--s3) 0 0;
 }
 
+/* ── Buttons ───────────────────────────────────────────────────────── */
+
 button {
-  font: inherit;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-fg);
-  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 550;
+  min-height: 44px;
+  padding: var(--s3) var(--s5);
+  border: 1px solid var(--royal);
+  border-radius: 999px;
+  background: var(--royal);
+  color: #fff;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  transition: background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--royal-deep);
+  border-color: var(--royal-deep);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
 }
 
 button:disabled {
-  opacity: 0.55;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 button.secondary {
-  background: transparent;
-  color: var(--accent);
+  background: var(--paper);
+  color: var(--ink-soft);
+  border-color: var(--line);
+  font-size: 0.85rem;
+  min-height: 38px;
+  padding: var(--s2) var(--s3);
 }
 
-.notice {
-  background: var(--notice-bg);
-  border: 1px solid #e6d9a8;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  font-size: 0.88rem;
-  margin-bottom: 1rem;
+button.secondary:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--ink-soft);
+  color: var(--ink);
 }
+
+.start-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin-top: var(--s5);
+}
+
+.start-row .hand {
+  font-family: var(--font-hand), cursive;
+  font-size: 1.05rem;
+  color: var(--ink-muted);
+}
+
+/* ── Notice ────────────────────────────────────────────────────────── */
+
+/* Sits below the form: smaller and quieter than the questions it follows, so it
+   reads as a footnote rather than competing with the task. */
+.notice {
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  background: var(--amber-soft);
+  border: 1px solid #f0e3c0;
+  border-radius: var(--radius);
+  padding: var(--s3);
+  margin: var(--s6) 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #6b4708;
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 1px;
+  color: #a06a12;
+}
+
+/* ── Chat ──────────────────────────────────────────────────────────── */
 
 .chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.75rem;
-  margin-bottom: 1rem;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding: var(--s3) 0;
+  margin-bottom: var(--s4);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--line);
 }
 
-.profile-summary {
-  font-size: 0.82rem;
-  color: var(--muted);
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+
+/* One neutral chip treatment. Four different coloured fills up here competed with
+   the messages, which are the actual content. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.chat-header .spacer {
+  flex: 1 1 auto;
 }
 
 .messages {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding-bottom: 1rem;
+  gap: var(--s4);
+  padding-bottom: var(--s4);
 }
 
 .msg {
+  max-width: 86%;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius-lg);
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Solid colours rather than opacity: fading these to 0.6 measured 2.6:1, which is
+   how a "subtle" label quietly becomes an unreadable one. */
+.msg .who {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: var(--s1);
 }
 
 .msg.user {
-  background: var(--user-bubble);
-  border-radius: 10px;
-  padding: 0.6rem 0.9rem;
   align-self: flex-end;
-  max-width: 85%;
+  background: var(--royal);
+  color: #fff;
+  border-bottom-right-radius: 5px;
 }
 
-.msg .who {
-  display: block;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin-bottom: 0.2rem;
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 5px;
+  box-shadow: var(--shadow);
 }
+
+.msg.user .who {
+  color: #ffffff;
+}
+
+/* A deeper orange than the accent: #f97316 on white is 3.0:1, under the floor for
+   text this size. */
+.msg.assistant .who {
+  color: #b45309;
+}
+
+/* ── Empty state ───────────────────────────────────────────────────── */
 
 .empty {
-  color: var(--muted);
+  text-align: center;
+  padding: var(--s6) var(--s4);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.empty .halo {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto var(--s3);
+  border-radius: 50%;
+  background: var(--royal-soft);
+  color: var(--royal);
+}
+
+.empty h2 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--ink);
+  margin: 0 0 var(--s2);
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  justify-content: center;
+  margin-top: var(--s5);
+}
+
+.suggestion {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 450;
+  /* 44px floor, same as every other tappable target. */
+  min-height: 44px;
+  padding: var(--s2) var(--s4);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.suggestion:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--royal);
+  color: var(--royal);
+}
+
+/* ── Typing indicator ──────────────────────────────────────────────── */
+
+.dots {
+  display: inline-flex;
+  gap: 5px;
+  padding: 5px 0;
+}
+
+.dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) { animation-delay: 0.15s; }
+.dots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ── Error ─────────────────────────────────────────────────────────── */
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+  color: var(--danger);
   font-size: 0.9rem;
 }
 
-.error {
-  background: var(--error-bg);
-  border: 1px solid #e7b3ad;
-  color: var(--error-fg);
-  border-radius: 8px;
-  padding: 0.7rem 0.9rem;
-  font-size: 0.88rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
+.error .msg-text {
+  flex: 1;
 }
 
-/* REL-3: typing indicator, shown only until the first token arrives. */
-.dots {
-  display: inline-block;
-  width: 2.5rem;
-  height: 1rem;
-  background-image: radial-gradient(circle 3px at center, var(--muted) 3px, transparent 3px);
-  background-size: 0.85rem 100%;
-  background-repeat: repeat-x;
-  animation: dots-pulse 1.1s ease-in-out infinite;
+.error button {
+  background: var(--danger);
+  border-color: var(--danger);
+  font-size: 0.85rem;
+  min-height: 38px;
+  padding: var(--s2) var(--s4);
 }
 
-@keyframes dots-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.9; }
+.error button:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #991b1b;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dots { animation: none; opacity: 0.6; }
-}
+/* ── Composer ──────────────────────────────────────────────────────── */
 
 .composer {
   position: sticky;
   bottom: 0;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-  padding: 0.75rem 0 0.5rem;
-  /* Keeps the composer clear of the home indicator on notched phones. */
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   display: flex;
-  gap: 0.5rem;
+  gap: var(--s2);
+  align-items: flex-end;
+  padding: var(--s3) 0;
+  padding-bottom: max(var(--s3), env(safe-area-inset-bottom));
+  background: var(--canvas);
 }
 
 .composer textarea {
   flex: 1;
-  /* 16px minimum: anything smaller makes iOS Safari zoom on focus, which breaks
-     the layout and cannot be undone without a page reload. */
+  min-width: 0;
+  /* 16px minimum — anything smaller makes iOS Safari zoom on focus. */
   font-family: inherit;
   font-size: 16px;
-  line-height: 1.4;
-  resize: vertical;
-  min-height: 2.75rem;
+  line-height: 1.5;
+  color: var(--ink);
+  resize: none;
+  min-height: 48px;
   max-height: 10rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  width: 100%;
-  min-width: 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
+
+.composer textarea:focus {
+  outline: none;
+  border-color: var(--royal);
+  box-shadow: 0 0 0 3px var(--royal-soft);
+}
+
+.composer textarea::placeholder {
+  color: #737686;
+}
+
+.send {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* ── Disclaimer ────────────────────────────────────────────────────── */
 
 .disclaimer {
-  color: var(--muted);
-  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--ink-muted);
+  font-size: 0.74rem;
   text-align: center;
-  padding: 0.5rem 0 1rem;
+  padding: var(--s2) 0 var(--s4);
 }
 
-/* REL-4 — mobile. The layout is single-column at every width, so this is about
-   touch targets, not reflow: 44px minimum on anything tappable, and no horizontal
-   overflow from long scheme names or the profile summary. */
+.disclaimer svg {
+  flex: none;
+  opacity: 0.75;
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────── */
+
 @media (max-width: 30rem) {
   .shell {
-    padding: 1rem 0.85rem 0;
+    padding: var(--s5) var(--s3) 0;
   }
 
-  h1 {
-    font-size: 1.25rem;
+  .tagline {
+    padding-left: 0;
   }
 
-  .option {
-    padding: 0.55rem 0.9rem;
-    min-height: 44px;
-  }
-
-  button {
-    min-height: 44px;
-    padding: 0.6rem 1.1rem;
-  }
-
-  .chat-header {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .msg.user {
+  .msg {
     max-width: 100%;
   }
 
   .error {
     flex-direction: column;
     align-items: stretch;
+    text-align: left;
+  }
+
+  .suggestions {
+    flex-direction: column;
+  }
+
+  .suggestion {
+    width: 100%;
   }
 }
 
-/* Long unbroken strings — scheme names, URLs — must never widen the page. */
-body {
-  overflow-x: hidden;
-}
+/* ── Motion preferences ────────────────────────────────────────────── */
 
-.profile-summary,
-.msg {
-  overflow-wrap: anywhere;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .dots span {
+    opacity: 0.7;
+  }
 }
