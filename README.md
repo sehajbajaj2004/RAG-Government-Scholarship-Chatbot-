@@ -1,8 +1,10 @@
 # Scholarship Assistant (Lite)
 
 RAG chatbot over Indian government scholarship guideline PDFs.
-Built to `scholarship-assistant-lite-spec.md`. **Phase 1 (headless pipeline) only** —
-there is no chat UI yet; that is Phase 2.
+Built to `scholarship-assistant-lite-spec.md`. **Phases 1 and 2 complete** — working
+pipeline, four-input form gating the chat, profile-tailored answers, conversation
+memory, and rate-limit handling. Phase 3 (loading/streaming polish, responsive
+layout) is outstanding.
 
 Stack: Next.js (App Router, plain JavaScript) · Gemini 2.5 Flash · Qdrant Cloud ·
 Transformers.js embeddings (`Xenova/bge-small-en-v1.5`, 384-dim). All free tier.
@@ -56,14 +58,45 @@ npm run dev
 curl -s -X POST http://localhost:3000/api/chat -H "Content-Type: application/json" -d "{\"user_message\":\"What is the income limit for the CSSS scholarship?\"}"
 ```
 
-Retrieval returns top-k chunks (k=10, raised from the spec default of 5 — rationale in
-`lib/config.js`). Returns `{ answer, retrieved }`, where each `retrieved` entry carries
+Retrieval ([lib/retrieve.js](lib/retrieve.js)) runs two passes and merges them: a
+similarity pass (top-k, k=10 — raised from the spec default of 5, rationale in
+`lib/config.js`) for depth, and a coverage pass grouped by `doc_id` that contributes
+the best chunk from any document the first pass missed. Capped at 16 chunks.
+Without the coverage pass, "what schemes are available for me?" reached only 4–7 of
+10 documents depending on phrasing; with it, every query reaches 10/10. Returns `{ answer, retrieved }`, where each `retrieved` entry carries
 `doc_id`, `scheme_name`, `year`, `page`, `score` and the chunk `text` verbatim as it went
 into the prompt — so any figure in the answer can be traced to its source by eye.
 A Phase 1 verification aid, not a citation UI.
 
-`profile` and `conversation` are accepted in the request body but ignored until
-Phase 2. Retrieval uses the query text only, never the profile (RAG-2).
+`profile` and `conversation` are optional in the request body. When present, the
+profile is appended to the very end of the prompt (§6.3) and the last 10 conversation
+turns are included. **Retrieval uses the query text only** — the profile never enters
+the embedding or a Qdrant filter (RAG-2), so two users with different profiles
+retrieve identical chunks and only the phrasing differs.
+
+Gemini is called with `temperature: 0`, so a difference between two answers is
+attributable to the profile rather than sampling noise.
+
+## The chat UI
+
+`npm run dev` and open the app. The four inputs (§3) must all be set before the chat
+opens (INP-1/INP-2); they live in React state only — no localStorage, no cookie, no
+server-side store (INP-3, NFR-2). They cannot be edited in place; "Start over" clears
+the profile and the whole conversation (INP-4/INP-5).
+
+On an API failure the typed message is preserved and a Retry appears (REL-2). A
+Gemini 429 is retried server-side at 1s → 2s → 4s before the user sees "Service busy,
+try again" (REL-1). The disclaimer is permanent on both screens plus a first-run
+notice (REL-5).
+
+### Known limitation — follow-up questions retrieve poorly
+
+RAG-2 mandates that retrieval use the current message alone. A follow-up like "What
+is the income limit for it?" therefore embeds without the scheme name, and retrieves
+generic income-limit chunks rather than that scheme's. Gemini still resolves "it"
+correctly from the conversation, but may answer from the wrong chunks or say the
+context does not cover it. Query rewriting is the standard fix and is out of scope
+for v0.
 
 ## Layout
 

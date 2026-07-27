@@ -1,3 +1,5 @@
+import './globals.css';
+
 export const metadata = {
   title: 'Scholarship Assistant (Lite)',
   description: 'RAG chatbot over Indian government scholarship guideline documents.',
