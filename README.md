@@ -1,10 +1,9 @@
 # Scholarship Assistant (Lite)
 
 RAG chatbot over Indian government scholarship guideline PDFs.
-Built to `scholarship-assistant-lite-spec.md`. **Phases 1 and 2 complete** — working
-pipeline, four-input form gating the chat, profile-tailored answers, conversation
-memory, and rate-limit handling. Phase 3 (loading/streaming polish, responsive
-layout) is outstanding.
+Built to `scholarship-assistant-lite-spec.md`. **All three phases implemented** —
+ingestion pipeline, four-input form gating the chat, profile-tailored answers,
+conversation memory, rate-limit handling, streamed responses and a mobile layout.
 
 Stack: Next.js (App Router, plain JavaScript) · Gemini 2.5 Flash · Qdrant Cloud ·
 Transformers.js embeddings (`Xenova/bge-small-en-v1.5`, 384-dim). All free tier.
@@ -84,10 +83,28 @@ opens (INP-1/INP-2); they live in React state only — no localStorage, no cooki
 server-side store (INP-3, NFR-2). They cannot be edited in place; "Start over" clears
 the profile and the whole conversation (INP-4/INP-5).
 
+Answers stream token by token (REL-3). `/api/chat` responds with newline-delimited
+JSON — one `meta` line carrying the retrieved chunks, a `delta` line per model chunk,
+then `done`. Failures *before* generation starts still return a normal JSON error with
+a real HTTP status, so error handling is unchanged; a failure mid-stream arrives as an
+`error` line instead.
+
 On an API failure the typed message is preserved and a Retry appears (REL-2). A
 Gemini 429 is retried server-side at 1s → 2s → 4s before the user sees "Service busy,
 try again" (REL-1). The disclaimer is permanent on both screens plus a first-run
-notice (REL-5).
+notice (REL-5). The conversation is trimmed to the last 10 messages before being sent
+(REL-6).
+
+The layout is single-column at every width (REL-4): 44px minimum tap targets, a 16px
+composer font so iOS Safari does not zoom on focus, safe-area padding for notched
+phones, and no horizontal overflow at 375px.
+
+### Free-tier quota
+
+`gemini-2.5-flash` allows **20 requests per day** on the free tier
+(`GenerateRequestsPerDayPerProjectPerModel-FreeTier`). The quota is per project **per
+model**, so switching `GEMINI_MODEL` in `lib/config.js` draws from a separate bucket.
+Embeddings run locally and consume no quota at all.
 
 ### Known limitation — follow-up questions retrieve poorly
 

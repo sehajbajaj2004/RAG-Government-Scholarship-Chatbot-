@@ -38,13 +38,18 @@ function isRateLimit(err) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Call Gemini, retrying only on rate limiting. Other failures surface immediately —
- *  retrying a malformed request just burns free-tier quota. */
-async function generateWithRetry(ai, prompt) {
+/** Start a streaming Gemini call, retrying only on rate limiting. Other failures
+ *  surface immediately — retrying a malformed request just burns free-tier quota.
+ *
+ *  Returns an async iterator *and* its first chunk, already pulled. Pulling the first
+ *  chunk here rather than inside the response stream is deliberate: quota, auth and
+ *  model errors surface on that first read, so they can still be answered with a
+ *  proper HTTP status (REL-2) instead of a 200 that fails halfway through. */
+async function startStreamWithRetry(ai, prompt) {
   let lastErr;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
-      const response = await ai.models.generateContent({
+      const stream = await ai.models.generateContentStream({
         model: GEMINI_MODEL,
         contents: prompt,
         config: {
@@ -54,7 +59,9 @@ async function generateWithRetry(ai, prompt) {
           temperature: 0,
         },
       });
-      return response.text;
+      const iterator = stream[Symbol.asyncIterator]();
+      const first = await iterator.next();
+      return { iterator, first };
     } catch (err) {
       lastErr = err;
       if (!isRateLimit(err) || attempt === RETRY_DELAYS_MS.length) throw err;
@@ -107,10 +114,11 @@ export async function POST(request) {
 
   const prompt = buildPrompt(userMessage, matches, { profile, conversation });
 
-  let answer;
+  let iterator;
+  let first;
   try {
     const ai = new GoogleGenAI({ apiKey });
-    answer = await generateWithRetry(ai, prompt);
+    ({ iterator, first } = await startStreamWithRetry(ai, prompt));
   } catch (err) {
     console.error('Gemini call failed:', redact(err?.message ?? err));
     if (isRateLimit(err)) {
@@ -120,24 +128,51 @@ export async function POST(request) {
     return jsonError(502, 'The model is unavailable right now. Try again.');
   }
 
-  if (!answer) {
-    return jsonError(502, 'The model returned an empty response. Try again.');
-  }
+  // Phase 1/2 verification aid: which chunks the answer was built from. Consumed by
+  // curl and scripts/dump-prompt.js, deliberately not rendered in the UI — §9 puts
+  // citation UI out of scope for v0.
+  const retrieved = matches.map((m) => ({
+    doc_id: m.payload?.doc_id,
+    scheme_name: m.payload?.scheme_name,
+    year: m.payload?.year,
+    page: m.payload?.page,
+    score: m.score,
+    text: m.payload?.text ?? '',
+  }));
 
-  // RAG-6: the answer text goes back to the client, which owns conversation state
-  // (INP-3 — nothing about the user is persisted server-side).
-  return Response.json({
-    answer,
-    // Phase 1/2 verification aid: which chunks the answer was built from. Consumed by
-    // curl and scripts/dump-prompt.js, deliberately not rendered in the UI — §9 puts
-    // citation UI out of scope for v0.
-    retrieved: matches.map((m) => ({
-      doc_id: m.payload?.doc_id,
-      scheme_name: m.payload?.scheme_name,
-      year: m.payload?.year,
-      page: m.payload?.page,
-      score: m.score,
-      text: m.payload?.text ?? '',
-    })),
+  // REL-3: newline-delimited JSON so the client can render tokens as they arrive.
+  // One `meta` line, then a `delta` per model chunk, then `done`.
+  // RAG-6: the client owns conversation state (INP-3 — nothing persisted server-side).
+  const encoder = new TextEncoder();
+  const responseStream = new ReadableStream({
+    async start(controller) {
+      const send = (obj) => controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+      try {
+        send({ type: 'meta', retrieved });
+        if (first?.value?.text) send({ type: 'delta', text: first.value.text });
+        if (!first?.done) {
+          for (;;) {
+            const next = await iterator.next();
+            if (next.done) break;
+            if (next.value?.text) send({ type: 'delta', text: next.value.text });
+          }
+        }
+        send({ type: 'done' });
+      } catch (err) {
+        // The HTTP status is already 200 by now, so a mid-stream failure has to be
+        // reported in-band. The client surfaces it the same way as any other error.
+        console.error('Gemini stream failed mid-response:', redact(err?.message ?? err));
+        send({ type: 'error', error: 'The answer was cut short. Try again.' });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(responseStream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+    },
   });
 }

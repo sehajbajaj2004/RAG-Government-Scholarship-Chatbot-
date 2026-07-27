@@ -7,7 +7,7 @@
 // never written to localStorage, a cookie, or any server-side store — a refresh loses
 // them, which is the intended behaviour. Nothing about the user is persisted.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { PROFILE_FIELDS, EMPTY_PROFILE, validateProfile } from '@/lib/profile.js';
 
@@ -80,10 +80,24 @@ function Chat({ profile, onStartOver }) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // The partial answer while tokens are still arriving. Held separately from
+  // `messages` so a failed or cut-short stream never lands in the conversation.
+  const [streaming, setStreaming] = useState('');
+  // The message currently in flight. The composer is cleared the instant Send is
+  // pressed, so this is what the in-flight bubble renders and what Retry re-sends —
+  // and what gets put back in the composer if the request fails (REL-2).
+  const [pending, setPending] = useState('');
+  const endRef = useRef(null);
+
+  // Keep the newest text in view as it streams, on a phone as much as on desktop.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [messages, streaming, busy]);
 
   async function send(text) {
     setBusy(true);
     setError('');
+    setStreaming('');
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -94,21 +108,60 @@ function Chat({ profile, onStartOver }) {
           conversation: messages,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Something went wrong.');
+
+      // Failures before generation starts still arrive as a normal JSON error with a
+      // real status code, so REL-2 behaves exactly as it did before streaming.
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Something went wrong.');
+      }
+
+      // REL-3: NDJSON — render each delta as it lands rather than waiting for the
+      // whole answer.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let answer = '';
+
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // The last element is whatever sits after the final newline — an incomplete
+        // line — so it is kept in the buffer for the next read.
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line);
+          if (event.type === 'delta') {
+            answer += event.text;
+            setStreaming(answer);
+          } else if (event.type === 'error') {
+            throw new Error(event.error);
+          }
+        }
+      }
+
+      if (!answer.trim()) throw new Error('The model returned an empty response. Try again.');
 
       // RAG-6: both sides of the exchange are appended, so the next request carries
       // the history. Only committed on success — see REL-2 below.
       setMessages((prev) => [
         ...prev,
         { role: 'user', content: text },
-        { role: 'assistant', content: data.answer },
+        { role: 'assistant', content: answer },
       ]);
-      setInput('');
+      setPending('');
     } catch (err) {
-      // REL-2: the typed message stays in the box so a retry costs nothing.
+      // REL-2: the composer was emptied on send, so hand the message back rather
+      // than making the user retype it. Retry re-sends it either way.
       setError(err.message || 'Something went wrong.');
+      setInput(text);
     } finally {
+      setStreaming('');
       setBusy(false);
     }
   }
@@ -117,6 +170,8 @@ function Chat({ profile, onStartOver }) {
     event.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
+    setPending(text);
+    setInput('');
     send(text);
   }
 
@@ -145,15 +200,37 @@ function Chat({ profile, onStartOver }) {
             {m.content}
           </div>
         ))}
-        {busy && <p className="empty">Thinking…</p>}
+
+        {/* REL-3: the in-flight turn. Shows the user's message immediately, then the
+            answer as it streams — a spinner only until the first token lands. */}
+        {busy && (
+          <>
+            <div className="msg user">
+              <span className="who">You</span>
+              {pending}
+            </div>
+            <div className="msg assistant">
+              <span className="who">Assistant</span>
+              {streaming || <span className="dots" aria-label="Thinking" role="status" />}
+            </div>
+          </>
+        )}
         {error && (
           <div className="error">
             <span>{error}</span>
-            <button type="button" onClick={() => send(input.trim())} disabled={busy}>
+            <button
+              type="button"
+              onClick={() => {
+                setInput('');
+                send(pending);
+              }}
+              disabled={busy || !pending}
+            >
               Retry
             </button>
           </div>
         )}
+        <div ref={endRef} />
       </div>
 
       <form className="composer" onSubmit={submit}>
