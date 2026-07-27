@@ -19,6 +19,7 @@
   --amber: #fbbf24;
   --amber-soft: #fdf6e3;
   --red: #e11d48;
+  --light-red: #ffe9e9;
 
   /* Surfaces & ink */
   --paper: #ffffff;
@@ -116,7 +117,7 @@ h1 .accent {
 
 .tagline {
   font-family: var(--font-hand), cursive;
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   color: var(--ink-soft);
   margin: 0 0 var(--s6);
   padding-left: 50px;
@@ -297,7 +298,7 @@ button.secondary:hover:not(:disabled) {
 
 .start-row .hand {
   font-family: var(--font-hand), cursive;
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   color: var(--ink-muted);
 }
 
@@ -309,9 +310,9 @@ button.secondary:hover:not(:disabled) {
   display: flex;
   gap: var(--s2);
   align-items: flex-start;
-  background: var(--amber-soft);
+  background: var(--light-red);
   border: 1px solid #f0e3c0;
-  border-radius: var(--radius);
+  border-radius: var(--red);
   padding: var(--s3);
   margin: var(--s6) 0 0;
   font-size: 0.78rem;

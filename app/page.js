@@ -64,7 +64,7 @@ function Masthead() {
           Scholarship <span className="accent">Assistant</span>
         </h1>
       </div>
-      <p className="tagline">Straight answers, from the official guidelines.</p>
+      <p className="tagline">Get instant guidance on Government Scholarships, from verified sources.</p>
     </>
   );
 }
@@ -145,7 +145,7 @@ function ProfileForm({ onStart }) {
             {missing.length} still unanswered
           </span>
         ) : (
-          <span className="hand">all four, then you’re in</span>
+          <span className="hand">just for some context :)</span>
         )}
       </div>
 
@@ -155,8 +155,7 @@ function ProfileForm({ onStart }) {
         <Info size={16} strokeWidth={2.25} aria-hidden="true" />
         <div>
           <strong>Before you start.</strong> {DISCLAIMER} Answers are drawn from official
-          scheme guideline documents, but this is not a substitute for them. Your four
-          answers stay in this browser tab and are never stored.
+          scheme guideline documents, but this is not a substitute for them. Verify on the scheme’s official page.
         </div>
       </div>
     </form>
@@ -298,7 +297,7 @@ function Chat({ profile, onStartOver }) {
               <Compass size={30} strokeWidth={2} />
             </span>
             <h2>Ask away</h2>
-            <p>Eligibility, amounts, renewal rules, documents — anything in the guidelines.</p>
+            <p>Eligibility, amounts, renewal rules, documents or anything that comes to your mind :)</p>
             <div className="suggestions">
               {SUGGESTIONS.map((s) => (
                 <button
