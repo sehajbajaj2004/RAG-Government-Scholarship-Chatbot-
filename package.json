@@ -1,0 +1,27 @@
+{
+  "name": "scholarship-assistant-lite",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "ingest": "node --env-file=.env.local ingest.js",
+    "dump-prompt": "node --env-file=.env.local scripts/dump-prompt.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.13.0",
+    "@huggingface/transformers": "^4.2.0",
+    "@qdrant/js-client-rest": "^1.18.0",
+    "next": "16.2.12",
+    "pdf-parse": "^2.4.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "eslint-config-next": "16.2.12"
+  }
+}

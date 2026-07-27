@@ -1,0 +1,50 @@
+{
+  "_README": [
+    "Maps each corpus PDF to the scheme metadata stored in its Qdrant payload (ING-5).",
+    "Not used in retrieval — these values only label chunks in the Gemini prompt.",
+    "scheme_name: taken verbatim from the document's own title page, never inferred from the filename.",
+    "year: the academic year / effective date the document states it applies from. null = the document does not state one.",
+    "Keys must match filenames exactly, including spaces and capitalisation."
+  ],
+
+  "95131767944207.pdf": {
+    "scheme_name": "Scheme of Top Class Education for SC Students",
+    "year": "2025-26"
+  },
+  "AICTE_2010_G.pdf": {
+    "scheme_name": "AICTE Pragati Scholarship Scheme for Girl Students (Degree)",
+    "year": "2020-21"
+  },
+  "AICTE_2013_G.pdf": {
+    "scheme_name": "AICTE Saksham Scholarship Scheme for Specially-Abled Students (Diploma)",
+    "year": "2020-21"
+  },
+  "CSSS_GUIDLINES_06022024.pdf": {
+    "scheme_name": "PM-USP Central Sector Scheme of Scholarship for College and University Students (PM-USP CSSS)",
+    "year": "2022-23"
+  },
+  "GUIDELINES FOR PG scholarship.pdf": {
+    "scheme_name": "AICTE Post Graduate (PG) Scholarship Scheme for GATE/GPAT Qualified Students",
+    "year": null
+  },
+  "Guidelines ISEL Scheme (wef 01 Oct 2017).pdf": {
+    "scheme_name": "Dr. Ambedkar Central Sector Scheme of Interest Subsidy on Educational Loans for Overseas Studies for OBCs and EBCs",
+    "year": "2017-18"
+  },
+  "GuidelinesFellowshipandScholarship2021.pdf": {
+    "scheme_name": "National Fellowship and Scholarship for Higher Education of ST Students",
+    "year": null
+  },
+  "Guidelines_ISHAN-UDAY_2324.pdf": {
+    "scheme_name": "Ishan Uday Special Scholarship Scheme for North Eastern Region",
+    "year": null
+  },
+  "POST_MATRIC_OBC_GUIDELINES.pdf": {
+    "scheme_name": "Centrally Sponsored Scheme of Post-Matric Scholarship for OBC, EBC and DNT Students studying in India",
+    "year": null
+  },
+  "pgscholarshipprofessionalcourse.pdf": {
+    "scheme_name": "UGC Scheme for Award of Post Graduate Scholarships for Professional Courses for SC/ST Candidates",
+    "year": null
+  }
+}
